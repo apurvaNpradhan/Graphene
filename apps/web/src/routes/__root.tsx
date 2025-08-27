@@ -7,6 +7,7 @@ import {
    Outlet,
    Scripts,
    createRootRouteWithContext,
+   redirect,
    useRouterState,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
@@ -17,8 +18,8 @@ import Loader from "@/components/loader";
 
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import type { AppRouter } from "../../../server/src/routers";
-import { authClient } from "@/lib/auth-client";
 import { getSessionFn } from "@/lib/auth-session";
+import { getAuthUser } from "@/lib/auth-user";
 export interface RouterAppContext {
    trpc: TRPCOptionsProxy<AppRouter>;
    queryClient: QueryClient;
@@ -26,12 +27,14 @@ export interface RouterAppContext {
 }
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
-   beforeLoad: async ({ context }) => {
-      const session = await context.queryClient.fetchQuery({
-         queryKey: ["session"],
-         queryFn: ({ signal }) => getSessionFn({ signal }),
-      });
-      return { session };
+   beforeLoad: async () => {
+      try {
+         const session = await getSessionFn();
+         return session;
+      } catch (error) {
+         console.error("Failed to fetch session:", error);
+         return null;
+      }
    },
    head: () => ({
       meta: [
