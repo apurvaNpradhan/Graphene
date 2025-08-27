@@ -18,11 +18,10 @@ import Loader from "@/components/loader";
 
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import type { AppRouter } from "../../../server/src/routers";
-import { getSessionFn } from "@/lib/auth-session";
-import { getAuthUser } from "@/lib/auth-user";
 import { createServerFn } from "@tanstack/react-start";
 import { getWebRequest } from "@tanstack/react-start/server";
 import { authClient } from "@/lib/auth-client";
+import { authQueryOptions } from "@/lib/auth-queries";
 export interface RouterAppContext {
    trpc: TRPCOptionsProxy<AppRouter>;
    queryClient: QueryClient;
@@ -40,9 +39,11 @@ const getUser = createServerFn({ method: "GET" }).handler(async () => {
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
    beforeLoad: async ({ context }) => {
-      const user = await context.queryClient.fetchQuery({
-         queryKey: ["user"],
-         queryFn: ({ signal }) => getUser({ signal }),
+      // we're using react-query for client-side caching to reduce client-to-server calls, see /src/router.tsx
+      // better-auth's cookieCache is also enabled server-side to reduce server-to-db calls, see /src/lib/auth/auth.ts
+      const user = await context.queryClient.ensureQueryData({
+         ...authQueryOptions(),
+         revalidateIfStale: true,
       });
       return { user };
    },

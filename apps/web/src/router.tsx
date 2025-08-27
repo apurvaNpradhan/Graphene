@@ -50,6 +50,7 @@ export const createRouter = () => {
       scrollRestoration: true,
       defaultPreloadStaleTime: 0,
       context: {
+         user: null,
          trpc,
          queryClient,
       },
