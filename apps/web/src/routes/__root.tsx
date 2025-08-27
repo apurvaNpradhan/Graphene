@@ -20,21 +20,31 @@ import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import type { AppRouter } from "../../../server/src/routers";
 import { getSessionFn } from "@/lib/auth-session";
 import { getAuthUser } from "@/lib/auth-user";
+import { createServerFn } from "@tanstack/react-start";
+import { getWebRequest } from "@tanstack/react-start/server";
+import { authClient } from "@/lib/auth-client";
 export interface RouterAppContext {
    trpc: TRPCOptionsProxy<AppRouter>;
    queryClient: QueryClient;
-   session: Awaited<ReturnType<typeof getSessionFn>>;
+   user: Awaited<ReturnType<typeof getUser>>;
 }
+const getUser = createServerFn({ method: "GET" }).handler(async () => {
+   const { headers } = getWebRequest()!;
+   const session = await authClient.getSession({
+      fetchOptions: {
+         headers,
+      },
+   });
+   return session.data?.user || null;
+});
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
-   beforeLoad: async () => {
-      try {
-         const session = await getSessionFn();
-         return session;
-      } catch (error) {
-         console.error("Failed to fetch session:", error);
-         return null;
-      }
+   beforeLoad: async ({ context }) => {
+      const user = await context.queryClient.fetchQuery({
+         queryKey: ["user"],
+         queryFn: ({ signal }) => getUser({ signal }),
+      });
+      return { user };
    },
    head: () => ({
       meta: [
